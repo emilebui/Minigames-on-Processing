@@ -31,12 +31,6 @@ void setup() {
 void draw() {
   background(30);
   
-  if (realtime == 0) {
-    textSize(32);
-    fill(255,0,0);
-    text(".",0,0);
-  }
-  
   pushMatrix();
   if (downTime > 0 && !(stop ^ won)) {
       currScreenY += GRAVITY; 
@@ -67,6 +61,15 @@ void draw() {
     float ti = ((float)realtime /60);
     String score = "Time: " + String.format("%.02f", ti);
     text(score, 40,80);
+  }
+  
+  if (!start) {
+    textSize(40);
+    fill(255,0,0);
+    text("D", 185,570);
+    text("F", 265,570);
+    text("J", 345,570);
+    text("K", 425,570);
   }
 }
 

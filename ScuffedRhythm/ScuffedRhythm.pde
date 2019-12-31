@@ -1,14 +1,11 @@
 final String textureS = "assets/sea.jpg";
 
 PImage texture;
-ParticleSystem d;
-ParticleSystem f;
-ParticleSystem j;
-ParticleSystem k;
 NoteMap map;
 int time;
 int combo;
 int score;
+int[] lightcolor;
 
 float gravity = 4;
 int interval = 20;
@@ -16,15 +13,15 @@ int interval = 20;
 
 void setup() {
   size(640, 640, P3D);
-  d = new ParticleSystem(new PVector(170,512), 3);
-  f = new ParticleSystem(new PVector(270,512), 3);
-  j = new ParticleSystem(new PVector(370,512), 3);
-  k = new ParticleSystem(new PVector(470,512), 3);
   
   texture = loadImage(textureS);
   map = new NoteMap();
   time = 0;
   combo = 0;
+  lightcolor = new int[4];
+  for (int i = 0; i < 4; i++) {
+     lightcolor[i] = 0; 
+  }
 }
 
 void draw() {
@@ -48,12 +45,8 @@ void draw() {
   }
   
   
-  
+  displayEffect();
   drawBar();
-  d.run();
-  f.run();
-  j.run();
-  k.run();
   //drawNote();
   map.run();
   time++;
@@ -61,18 +54,18 @@ void draw() {
 
 void keyPressed() {
  if (key == 'd') {
-   hitEffect(d, 0);
+   hitEffect(0);
  } else if (key == 'f') {
-   hitEffect(f, 1);
+   hitEffect(1);
  } else if (key == 'j') {
-   hitEffect(j, 2);
+   hitEffect(2);
  } else if (key == 'k') {
-   hitEffect(k, 3);
+   hitEffect(3);
  }
 }
 
-void hitEffect(ParticleSystem origin, int type) {
-  origin.startEff();
+void hitEffect(int type) {
+  lightcolor[type] = 255;
   
   if (map.checkHit(type))
   {
@@ -81,7 +74,24 @@ void hitEffect(ParticleSystem origin, int type) {
   }
 }
 
+void lightEffect(int ty) {
+  pushMatrix();
+  noStroke();
+  fill(lightcolor[ty]);
+  rect(120 + (100*ty),0,100,524);
+  popMatrix();
+  lightcolor[ty] -= 17;
+}
 
+void displayEffect() {
+ 
+  for (int i = 0; i < 4; i++) {
+     if (lightcolor[i] > 0) {
+        lightEffect(i); 
+     }
+  }
+  
+}
 
 void drawBar() {
  
@@ -113,8 +123,8 @@ class NoteMap {
    
     for (int i = 0; i < nList.size(); i++) {
       Note tempN = nList.get(i);
-      if (tempN.type == ty && tempN.checkHit()) {
-        nList.remove(i);
+      if (tempN.type == ty && tempN.checkHit() && !tempN.explose) {
+        tempN.explose();
         return true;
       }
     }
@@ -126,8 +136,12 @@ class NoteMap {
   void run() {
     
     for (Note n : nList) {
-      n.move();
-      n.drawN();
+      if (!n.explose) {
+        n.move();
+        n.drawN();
+      } else {
+        n.runEff();
+      }
     }
    
     //This way it won't cause stutters
@@ -137,6 +151,8 @@ class NoteMap {
         combo = 0;
         nList.remove(i);
       }
+      if (tempN.explose && tempN.isDead())
+        nList.remove(i);
     }
     
   }
@@ -148,6 +164,8 @@ class Note {
   float posY;
   ParticleSystem effect;
   int type;
+  boolean explose;
+  int timeEff;
   
   public Note(int ty) {
     type = ty;
@@ -160,6 +178,8 @@ class Note {
       posX = 370;
     else if (type == 3)
       posX = 470;
+      
+    explose = false;
   }
   
   void move() {
@@ -179,6 +199,20 @@ class Note {
     if (posY >= 488 && posY <= 536)
       return true;
     return false;
+  }
+  
+  void explose() {
+     explose = true;
+     effect = new ParticleSystem(new PVector(posX,posY));
+     effect.startEff();
+  }
+  
+  boolean isDead() {
+     return effect.isDead(); 
+  }
+  
+  void runEff() {
+     effect.run(); 
   }
 }
 
@@ -201,10 +235,9 @@ class ParticleSystem {
   int type;
   int effTime;
 
-  ParticleSystem(PVector position, int t) {
+  ParticleSystem(PVector position) {
     origin = position;
     particles = new ArrayList<Particle>();
-    type = t;
   }
 
   void addParticle() {
@@ -235,6 +268,14 @@ class ParticleSystem {
    effTime = 10; 
    changeType();
   }
+  
+  boolean isDead() {
+     if (particles.size() == 0) {
+       //println("REMOVED");
+       return true;
+     }
+     return false;
+  }
 }
 
 
@@ -249,8 +290,8 @@ class Particle {
   Particle(PVector l, int t) {
     
     type = t;
-    acceleration = new PVector(0, 0.05);
-    velocity = new PVector(random(-1, 1), random(-1, 2));
+    acceleration = new PVector(0, 0.02);
+    velocity = new PVector(random(-1, 1), random(-2, 0));
     size = random(7,14);
     /**if (type == 2)
     {
@@ -283,9 +324,9 @@ class Particle {
   }
 
   void display() {
-    float percentage = lifespan/120;
-    stroke(255, lifespan);
-    fill(50*percentage, 220*percentage, 250*percentage);
+    float percentage = lifespan/90;
+    stroke(255,255,255, percentage*255);
+    fill(50, 220, 250, percentage*255);
     
     if (type == 0)
       drawStar(position.x,position.y,size);
